@@ -1,13 +1,19 @@
 [package]
-name    = "gidit_classification"
+name    = "digit_classification"
 version = "0.1.0"
 std     = "c++17"
 
 [toolchain]
+build_type = "Debug"
+
+[toolchain.macos]
+compiler         = "apple-clang"
+compiler_version = "17"
+arch             = "armv8"
+
+[toolchain.windows]
 compiler         = "msvc"
 compiler_version = "193"
-arch             = "x86_64"
-build_type       = "Debug"
 
 [dependencies]
 eigen = { version = "5.0.1", cmake_package = "Eigen3", cmake_target = "Eigen3::Eigen" }
