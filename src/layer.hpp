@@ -29,9 +29,11 @@ struct Dense
         return W.transpose() * dY; // [n x m][m x B] -> [n x B]
     }
 
-    void step(float lr)
+    // l2 is the weight-decay strength: every step shrinks each weight
+    // toward zero in proportion to its own size (gradient of l2/2 * sum(W^2))
+    void step(float lr, float l2 = 0.0f)
     {
-        W -= lr * dW;
+        W -= lr * (dW + l2 * W);
         b -= lr * db;
     }
 };
