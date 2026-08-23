@@ -1,30 +1,46 @@
 #pragma once
-#include "layer.hpp"
+#include "dense_layer.hpp"
+#include <ranges>
 
-// Column-wise softmax: turns raw scores Z [10 x B] into probabilities.
-// Subtracting the max of each column first keeps exp() from overflowing.
-inline Mat softmax(const Mat &Z)
+struct LayerConfig
 {
-    Mat P = (Z.rowwise() - Z.colwise().maxCoeff()).array().exp();
-    P.array().rowwise() /= P.colwise().sum().array();
-    return P;
-}
+    Activation activation;
+    int in;
+    int out;
+};
 
-// Average cross-entropy over the batch. Y is one-hot [10 x B].
-inline float cross_entropy(const Mat &P, const Mat &Y)
+class PerceptronModel
 {
-    return -((P.array() + 1e-8f).log() * Y.array()).sum() / float(P.cols());
-}
+    std::vector<DenseLayer> layers;
 
-// Fraction of columns where the highest score matches the label.
-inline float accuracy(const Mat &Z, const std::vector<uint8_t> &labels)
-{
-    int correct = 0;
-    for (int i = 0; i < Z.cols(); ++i)
+public:
+    PerceptronModel(const std::vector<LayerConfig>& layer_configs)
     {
-        Eigen::Index pred;
-        Z.col(i).maxCoeff(&pred);
-        correct += (pred == labels[i]);
+        for (const LayerConfig &cfg : layer_configs)
+            layers.emplace_back(cfg.in, cfg.out, cfg.activation);
     }
-    return float(correct) / float(Z.cols());
-}
+
+    Mat forward(const Mat &x)
+    {
+        Mat out = x;
+        for (DenseLayer &layer : layers)
+            out = layer.forward(out);
+        return out;
+    }
+
+    void backward(const Mat &dY)
+    {
+        Mat dL = dY;
+        for (auto& layer : layers | std::views::reverse)
+            dL = layer.backward(dL);
+    }
+
+    void step(float lr, float l2 = 0.0f)
+    {
+        for (DenseLayer &layer : layers)
+            layer.step(lr, l2);
+    }
+
+    const DenseLayer &layer(size_t i) const { return layers[i]; }
+    size_t layer_count() const { return layers.size(); }
+};
